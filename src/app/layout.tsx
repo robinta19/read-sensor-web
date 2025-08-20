@@ -18,7 +18,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${poppins.className} antialiased`}>
+      <body className={`bg-[#F5F5F5] ${poppins.className} antialiased`}>
         {children}
       </body>
     </html>
