@@ -90,6 +90,20 @@ export const useGetSensorId = (id: number) => {
   });
 };
 
+// record data
+export const getSensorRecordId = async (
+  id: string
+): Promise<ApiResponse<RecordDataResponse[]>> => {
+  return await fetcher(`datas/per-day/${id}`);
+};
+
+export const useGetSensorRecordId = (id: string) => {
+  return useQuery<ApiResponse<RecordDataResponse[]>, Error>({
+    queryKey: ["useGetSensorRecordId", id],
+    queryFn: () => getSensorRecordId(id),
+  });
+};
+
 // post
 export const useSensor = (
   method: "POST" | "PUT" = "POST",
@@ -104,8 +118,8 @@ export const useSensor = (
       data
     ): Promise<ApiResponse<DataObject<SensorFormPayload>>> => {
       const endpoint = id
-        ? `category-potential/${id}/update`
-        : "category-potential/create";
+        ? `nodes/send-data/${id}`
+        : "nodes/send-data";
       const delay = new Promise((resolve) => setTimeout(resolve, 2000));
       const response: ApiResponse<DataObject<SensorFormPayload>> =
         await sendData(endpoint, data, method);
@@ -121,16 +135,3 @@ export const useSensor = (
   });
 };
 
-// record data
-export const getSensorRecordId = async (
-  id: string
-): Promise<ApiResponse<RecordDataResponse[]>> => {
-  return await fetcher(`datas/per-day/${id}`);
-};
-
-export const useGetSensorRecordId = (id: string) => {
-  return useQuery<ApiResponse<RecordDataResponse[]>, Error>({
-    queryKey: ["useGetSensorRecordId", id],
-    queryFn: () => getSensorRecordId(id),
-  });
-};
