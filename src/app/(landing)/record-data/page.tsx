@@ -1,8 +1,11 @@
 // app/record-data/page.tsx
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { useGetSensorRecordId } from "@/components/parts/landing/api";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 /* ---------- Utils ---------- */
 function toYmd(d: Date) {
@@ -15,39 +18,28 @@ function formatDateID(d: Date) {
     const day = d.toLocaleDateString("id-ID", { day: "2-digit" });
     const month = d.toLocaleDateString("id-ID", { month: "long" });
     const year = d.getFullYear();
-    // Kapital awal bulan
     return `${day} ${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`;
 }
 
-/* ---------- Types & dummy data ---------- */
-type Row = {
-    waktu: string;
-    suhu: number;
+/* ---------- Types ---------- */
+type RecordRow = {
+    id: string;
+    time: string;
+    ec: number;
+    temp: number;
     ph: number;
-    salinitas: number;
-    kualitasAir: number;
-    sensorLain: number;
+    turb: number;
+    do: number;
 };
-function makeRows(): Row[] {
-    const base: Omit<Row, "waktu"> = {
-        suhu: 32.11,
-        ph: 6.71,
-        salinitas: 1.91,
-        kualitasAir: 90.04,
-        sensorLain: 332.15,
-    };
-    return Array.from({ length: 24 }, (_, h) => ({
-        waktu: `${String(h).padStart(2, "0")}:00`,
-        ...base,
-    }));
-}
 
 /* ---------- Page ---------- */
 export default function RecordDataPage() {
-    // DEFAULT: hari berjalan
     const [date, setDate] = useState<Date>(new Date());
-    const rows = useMemo(makeRows, []);
     const inputRef = useRef<HTMLInputElement | null>(null);
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
+    const node = searchParams.get("node") || "";
 
     const shiftDay = (delta: number) => {
         const d = new Date(date);
@@ -63,20 +55,44 @@ export default function RecordDataPage() {
 
     const openPicker = () => {
         if (!inputRef.current) return;
-        // Buka programmatically jika ada
         if (typeof inputRef.current.showPicker === "function") {
             inputRef.current.showPicker();
         } else {
-            // fallback: fokuskan input (akan munculkan UI bawaan)
             inputRef.current.focus();
             inputRef.current.click();
         }
     };
 
+    // jika node tidak ada → tampilkan halaman pesan
+    if (!node) {
+        return (
+            <div className="pt-[100px] gap-6 px-5 pb-5">
+                <div className="rounded-lg p-5 py-10 flex flex-col items-center justify-center text-center bg-white shadow-md ">
+                    <p className="text-gray-600 text-lg mb-4">
+                        Silahkan Pilih Panel Di Dashboard Dan Pilih Detail
+                    </p>
+                    <Button
+                        className="bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"
+                        onClick={() => router.push("/")}>
+                        Kembali ke Dashboard
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    // integrasi API dengan tanggal dinamis
+    const query = `${node}?date=${toYmd(date)}`;
+    const { data, isLoading } = useGetSensorRecordId(query);
+
+    const rows: RecordRow[] = useMemo(() => {
+        return data?.data ?? [];
+    }, [data]);
+
     return (
         <div className="pt-[100px] px-5 pb-5">
             <div className="w-full">
-                <div className="mx-auto max-w-6xl">
+                <div className="">
                     {/* Kontrol tanggal */}
                     <div className="mb-4 flex items-center justify-center gap-2">
                         <button
@@ -87,7 +103,6 @@ export default function RecordDataPage() {
                             <ChevronLeft className="h-4 w-4" />
                         </button>
 
-                        {/* Chip tanggal yang bisa diklik */}
                         <button
                             type="button"
                             onClick={openPicker}
@@ -96,17 +111,12 @@ export default function RecordDataPage() {
                         >
                             <Calendar className="h-4 w-4" />
                             <span>{formatDateID(date)}</span>
-
-                            {/* Input date transparan sebagai anchor/picker */}
                             <input
                                 ref={inputRef}
                                 type="date"
                                 value={toYmd(date)}
                                 onChange={onPick}
                                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                            // optional: batasi rentang jika mau
-                            // min="2020-01-01"
-                            // max="2030-12-31"
                             />
                         </button>
 
@@ -134,19 +144,33 @@ export default function RecordDataPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {rows.map((r, i) => (
-                                        <tr
-                                            key={r.waktu}
-                                            className={i % 2 === 1 ? "bg-[#F6F9FF]" : "bg-white"}
-                                        >
-                                            <td className="px-4 py-3 text-gray-700">{r.waktu}</td>
-                                            <td className="px-4 py-3 text-gray-700">{r.suhu.toFixed(2)}</td>
-                                            <td className="px-4 py-3 text-gray-700">{r.ph.toFixed(2)}</td>
-                                            <td className="px-4 py-3 text-gray-700">{r.salinitas.toFixed(2)}</td>
-                                            <td className="px-4 py-3 text-gray-700">{r.kualitasAir.toFixed(2)}</td>
-                                            <td className="px-4 py-3 text-gray-700">{r.sensorLain.toFixed(2)}</td>
+                                    {isLoading ? (
+                                        <tr>
+                                            <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
+                                                Loading...
+                                            </td>
                                         </tr>
-                                    ))}
+                                    ) : rows.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
+                                                Data tidak tersedia
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        rows.map((r, i) => (
+                                            <tr
+                                                key={r.id}
+                                                className={i % 2 === 1 ? "bg-[#F6F9FF]" : "bg-white"}
+                                            >
+                                                <td className="px-4 py-3 text-gray-700">{r.time}</td>
+                                                <td className="px-4 py-3 text-gray-700">{r.temp}</td>
+                                                <td className="px-4 py-3 text-gray-700">{r.ph}</td>
+                                                <td className="px-4 py-3 text-gray-700">{r.ec}</td>
+                                                <td className="px-4 py-3 text-gray-700">{r.turb}</td>
+                                                <td className="px-4 py-3 text-gray-700">{r.do}</td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </div>

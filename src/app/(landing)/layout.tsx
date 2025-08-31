@@ -1,6 +1,7 @@
 "use client";
 
 import Navbar from "@/components/map/navbar";
+import { Suspense } from "react";
 
 export default function MapLayout({
     children,
@@ -8,7 +9,9 @@ export default function MapLayout({
     return (
         <div className="relative">
             <Navbar />
-            {children}
+            <Suspense>
+                {children}
+            </Suspense>
         </div>
     );
 }
