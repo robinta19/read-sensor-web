@@ -21,9 +21,11 @@ export const useGetSensorLatLong = (query?: string) => {
     queryKey: ["useGetSensorLatLong", query],
     queryFn: () => getSensorLatLong(query),
     placeholderData: (prev) => prev, // pengganti keepPreviousData
+    refetchInterval: 60000, // 🔄 refetch tiap 1 menit
     refetchIntervalInBackground: true,
   });
 };
+
 
 export const getSensorLatestId = async (
   id: string
@@ -35,6 +37,9 @@ export const useGetSensorLatestId = (id: string) => {
   return useQuery<ApiResponse<DataObject<LatestDataResponse>>, Error>({
     queryKey: ["useGetSensorLatestId", id],
     queryFn: () => getSensorLatestId(id),
+    placeholderData: (prev) => prev, // pengganti keepPreviousData
+    refetchInterval: 60000, // 🔄 refetch tiap 1 menit
+    refetchIntervalInBackground: true,
   });
 };
 

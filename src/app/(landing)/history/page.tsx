@@ -25,10 +25,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { useGetSensor } from "@/components/parts/landing/api";
 import Image from "next/image";
-import { start } from "repl";
 import FilterWaktu from "@/components/parts/history/filterWaktu";
 import { useSearchParams } from "next/navigation";
 import FilterPanel from "@/components/parts/history/filterPanel";
+import axios from "axios";
+import ButtonAddress from "@/components/form/buttonAddress";
+
 
 // Registrasi ChartJS
 ChartJS.register(
@@ -42,8 +44,16 @@ ChartJS.register(
 );
 
 // ==================================
-// Utility
+// Utility batas maksimal + stepSize
 // ==================================
+const chartConfig: Record<string, { max: number; step: number }> = {
+    "Suhu (°C)": { max: 100, step: 5 },
+    "pH": { max: 14, step: 1 },
+    "Salinitas": { max: 200, step: 20 },
+    "Kekeruhan": { max: 1000, step: 100 },
+    "Oksigen Terlarut": { max: 20, step: 2 },
+};
+
 const tinyBaseline = new Array(24).fill(0.4);
 
 const baseOptions: any = {
@@ -70,7 +80,7 @@ const baseOptions: any = {
         },
         y: {
             grid: { color: "rgba(0,0,0,0.08)" },
-            ticks: { stepSize: 5, font: { size: 10 } },
+            ticks: { font: { size: 10 } },
             suggestedMin: 0,
             suggestedMax: 30,
         },
@@ -104,53 +114,91 @@ function makeDataset(values: number[], label: string) {
 // ==================================
 // Chart Metric Card
 // ==================================
-function MetricCard({ title, values, timestamps }: { title: string; values: number[]; timestamps: string[] }) {
+function MetricCard({
+    title,
+    values,
+    timestamps,
+}: {
+    title: string;
+    values: number[];
+    timestamps: string[];
+}) {
     const data = useMemo(
         () => ({
-            labels: timestamps, // 🔑 langsung pakai timestamp dari API
+            labels: timestamps,
             datasets: makeDataset(values, title),
         }),
         [values, timestamps, title]
     );
 
+    const options = useMemo(() => {
+        const cfg = chartConfig[title] ?? { max: 30, step: 5 };
+        return {
+            ...baseOptions,
+            scales: {
+                ...baseOptions.scales,
+                y: {
+                    ...baseOptions.scales.y,
+                    suggestedMin: 0,
+                    suggestedMax: cfg.max,
+                    ticks: {
+                        ...baseOptions.scales.y.ticks,
+                        stepSize: cfg.step,
+                    },
+                },
+            },
+        };
+    }, [title]);
+
     return (
         <div className="rounded-xl border p-3 bg-white shadow-sm">
             <div className="text-sm font-semibold mb-2">{title}</div>
             <div className="h-[220px]">
-                <Line data={data} options={baseOptions} />
+                <Line data={data} options={options} />
             </div>
         </div>
     );
 }
 
-
 // ==================================
 // Kalibrasi Modal
 // ==================================
-function KalibrasiModal({ panelName }: { panelName: string }) {
+
+function KalibrasiModal({ panelName, nodeID }: { panelName: string; nodeID: string }) {
     const [selected, setSelected] = useState("");
+    const [ipAddress, setIpAddress] = useState("");
     const [loading, setLoading] = useState(false);
     const [done, setDone] = useState(false);
     const [open, setOpen] = useState(false);
 
     const sensors = [
-        "Sensor Suhu",
-        "Sensor pH",
-        "Sensor Salinitas",
-        "Sensor Kekeruhan",
-        "Sensor Oksigen Terlarut",
+        { label: "Sensor pH", value: "ph" },
+        { label: "Sensor Salinitas", value: "ec" },
+        { label: "Sensor Oksigen Terlarut", value: "do" },
+        { label: "Sensor Kekeruhan", value: "turb" },
     ];
 
-    const handleKalibrasi = () => {
+    const handleKalibrasi = async () => {
+        if (!ipAddress || !selected) return;
+
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
+        try {
+            await axios.post(`http://${ipAddress}/kalibrasi`, {
+                nodeID,
+                sensor: selected,
+            });
             setDone(true);
-        }, 2000);
+        } catch (err) {
+            console.error("Kalibrasi gagal:", err);
+            alert("Kalibrasi gagal, cek koneksi atau IP Address.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const reset = () => {
         setSelected("");
+        setIpAddress("");
         setLoading(false);
         setDone(false);
     };
@@ -163,7 +211,9 @@ function KalibrasiModal({ panelName }: { panelName: string }) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-blue-500 text-white hover:bg-blue-600 cursor-pointer">Kalibrasi Sensor</Button>
+                <Button className="bg-blue-500 text-white hover:bg-blue-600 cursor-pointer">
+                    Kalibrasi Sensor
+                </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
                 {!done ? (
@@ -171,29 +221,46 @@ function KalibrasiModal({ panelName }: { panelName: string }) {
                         <DialogHeader>
                             <DialogTitle>Kalibrasi {panelName}</DialogTitle>
                         </DialogHeader>
+
                         {!loading ? (
                             <div className="space-y-4">
-                                <p className="text-sm">Pilih Sensor yang ingin dikalibrasi ulang:</p>
-                                <div className="space-y-2">
-                                    {sensors.map((s) => (
-                                        <label key={s} className="flex items-center gap-2 text-sm">
-                                            <input
-                                                type="radio"
-                                                name="sensor"
-                                                value={s}
-                                                checked={selected === s}
-                                                onChange={(e) => setSelected(e.target.value)}
-                                            />
-                                            {s}
-                                        </label>
-                                    ))}
+                                {/* Input IP Address */}
+                                <div>
+                                    <label className="text-sm font-medium">IP Address</label>
+                                    <input
+                                        type="text"
+                                        placeholder="contoh: 192.168.1.10"
+                                        value={ipAddress}
+                                        onChange={(e) => setIpAddress(e.target.value)}
+                                        className="w-full border rounded p-2 text-sm mt-1"
+                                    />
                                 </div>
+
+                                {/* Pilih sensor */}
+                                <div>
+                                    <p className="text-sm">Pilih Sensor yang ingin dikalibrasi ulang:</p>
+                                    <div className="space-y-2 mt-2">
+                                        {sensors.map((s) => (
+                                            <label key={s.value} className="flex items-center gap-2 text-sm">
+                                                <input
+                                                    type="radio"
+                                                    name="sensor"
+                                                    value={s.value}
+                                                    checked={selected === s.value}
+                                                    onChange={(e) => setSelected(e.target.value)}
+                                                />
+                                                {s.label}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 <div className="flex justify-end gap-2">
                                     <Button variant="outline" onClick={handleClose}>
                                         Batal
                                     </Button>
                                     <Button
-                                        disabled={!selected}
+                                        disabled={!selected || !ipAddress}
                                         onClick={handleKalibrasi}
                                         className="bg-blue-500 text-white hover:bg-blue-600 cursor-pointer"
                                     >
@@ -228,25 +295,47 @@ function KalibrasiModal({ panelName }: { panelName: string }) {
     );
 }
 
+
 // ==================================
 // Panel
 // ==================================
-function Panel({ panelName, metrics }: { panelName: string; metrics: any }) {
+function Panel({ panelName, metrics, nodeID }: { panelName: string; metrics: any; nodeID: string }) {
     return (
         <div className="p-3 md:p-6 bg-white rounded-lg shadow-md">
             <div className="flex items-start justify-between mb-4">
                 <div>
                     <div className="font-semibold">{panelName}</div>
                 </div>
-                <KalibrasiModal panelName={panelName} />
+                {/* ✅ nodeID diteruskan ke modal */}
+                <KalibrasiModal panelName={panelName} nodeID={nodeID} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <MetricCard title="Suhu (°C)" values={metrics.temp || []} timestamps={metrics.timestamps || []} />
-                <MetricCard title="pH" values={metrics.ph || []} timestamps={metrics.timestamps || []} />
-                <MetricCard title="EC" values={metrics.ec || []} timestamps={metrics.timestamps || []} />
-                <MetricCard title="Kekeruhan" values={metrics.turb || []} timestamps={metrics.timestamps || []} />
-                <MetricCard title="Oksigen Terlarut" values={metrics.do || []} timestamps={metrics.timestamps || []} />
+                <MetricCard
+                    title="Suhu (°C)"
+                    values={metrics.temp || []}
+                    timestamps={metrics.timestamps || []}
+                />
+                <MetricCard
+                    title="pH"
+                    values={metrics.ph || []}
+                    timestamps={metrics.timestamps || []}
+                />
+                <MetricCard
+                    title="Salinitas"
+                    values={metrics.ec || []}
+                    timestamps={metrics.timestamps || []}
+                />
+                <MetricCard
+                    title="Kekeruhan"
+                    values={metrics.turb || []}
+                    timestamps={metrics.timestamps || []}
+                />
+                <MetricCard
+                    title="Oksigen Terlarut"
+                    values={metrics.do || []}
+                    timestamps={metrics.timestamps || []}
+                />
             </div>
         </div>
     );
@@ -268,10 +357,15 @@ export default function PanelPage() {
     }
 
     return (
-        <div className="flex flex-col pt-[100px] gap-6 px-5 pb-5">
-            <div className="flex gap-3">
-                <FilterWaktu />
-                <FilterPanel />
+        <div className="flex flex-col pt-[100px] gap-4 md:gap-6 px-5 pb-5">
+            <div className="w-full flex flex-col md:flex-row gap-3 md:justify-between">
+                <div className="flex gap-3">
+                    <FilterWaktu />
+                    <FilterPanel />
+                </div>
+                <div className="">
+                    <ButtonAddress />
+                </div>
             </div>
             {data?.data && data.data.length > 0 ? (
                 data.data.map((node) => (
@@ -279,6 +373,7 @@ export default function PanelPage() {
                         key={node.node_id}
                         panelName={`Panel ${node.node}`}
                         metrics={node.metrics}
+                        nodeID={node.node_id} // ✅ diteruskan
                     />
                 ))
             ) : (

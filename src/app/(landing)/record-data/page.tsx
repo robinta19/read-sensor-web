@@ -136,11 +136,11 @@ export default function RecordDataPage() {
                                 <thead>
                                     <tr className="bg-[#E7F0FF] text-gray-700">
                                         <th className="px-4 py-3 font-semibold">Waktu</th>
-                                        <th className="px-4 py-3 font-semibold">Suhu</th>
+                                        <th className="px-4 py-3 font-semibold">Suhu (°C)</th>
                                         <th className="px-4 py-3 font-semibold">pH</th>
-                                        <th className="px-4 py-3 font-semibold">Salinitas</th>
-                                        <th className="px-4 py-3 font-semibold">Kualitas Air</th>
-                                        <th className="px-4 py-3 font-semibold">Sensor Lain</th>
+                                        <th className="px-4 py-3 font-semibold">Salinitas (mS/cm)</th>
+                                        <th className="px-4 py-3 font-semibold">Kekeruhan (NTU)</th>
+                                        <th className="px-4 py-3 font-semibold">Oksigen Terlarut (mg/L)</th>
                                     </tr>
                                 </thead>
                                 <tbody>

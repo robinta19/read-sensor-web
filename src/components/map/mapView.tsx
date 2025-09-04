@@ -64,8 +64,8 @@ function LatestData({ nodeId }: { nodeId: string }) {
       <div className="text-gray-600">pH</div>
       <div className="font-medium">: {latest.ph}</div>
 
-      <div className="text-gray-600">EC</div>
-      <div className="font-medium">: {latest.ec} µS/cm</div>
+      <div className="text-gray-600">Salinitas</div>
+      <div className="font-medium">: {latest.ec} mS/cm</div>
 
       <div className="text-gray-600">Kekeruhan</div>
       <div className="font-medium">: {latest.turb} NTU</div>

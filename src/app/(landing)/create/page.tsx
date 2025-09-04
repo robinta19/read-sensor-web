@@ -77,8 +77,8 @@ const CreateNodePage = () => {
                         />
                         <CustomFormInput<SensorFormPayload>
                             name="ec"
-                            label="EC"
-                            placeholder="Masukkan nilai EC"
+                            label="Salinitas"
+                            placeholder="Masukkan nilai Salinitas"
                             type="number"
                         />
                         <CustomFormInput<SensorFormPayload>
