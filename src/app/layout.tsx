@@ -11,8 +11,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Web Read Sensor",
-  description: "Web Read Sensor",
+  title: "Kualitas Air Mangrove Petengoran, Desa Gebang, Pesawaran",
+  description: "Kualitas Air Mangrove Petengoran, Desa Gebang, Pesawaran",
 };
 
 export default function RootLayout({
@@ -20,6 +20,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
+       <head>
+         <link rel="icon" href="/images/logo-nav.png" />
+      </head>
       <body className={`bg-[#F5F5F5] ${poppins.className} antialiased`}>
         <Providers>{children}</Providers>
         <MyAlertDialog />

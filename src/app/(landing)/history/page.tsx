@@ -166,7 +166,6 @@ function MetricCard({
 
 function KalibrasiModal({ panelName, nodeID }: { panelName: string; nodeID: string }) {
     const [selected, setSelected] = useState("");
-    const [ipAddress, setIpAddress] = useState("");
     const [loading, setLoading] = useState(false);
     const [done, setDone] = useState(false);
     const [open, setOpen] = useState(false);
@@ -179,11 +178,11 @@ function KalibrasiModal({ panelName, nodeID }: { panelName: string; nodeID: stri
     ];
 
     const handleKalibrasi = async () => {
-        if (!ipAddress || !selected) return;
+        if (!selected) return;
 
         setLoading(true);
         try {
-            await axios.post(`http://${ipAddress}/kalibrasi`, {
+            await axios.post(`http://socket:3000/kalibrasi`, {
                 nodeID,
                 sensor: selected,
             });
@@ -198,7 +197,6 @@ function KalibrasiModal({ panelName, nodeID }: { panelName: string; nodeID: stri
 
     const reset = () => {
         setSelected("");
-        setIpAddress("");
         setLoading(false);
         setDone(false);
     };
@@ -225,7 +223,7 @@ function KalibrasiModal({ panelName, nodeID }: { panelName: string; nodeID: stri
                         {!loading ? (
                             <div className="space-y-4">
                                 {/* Input IP Address */}
-                                <div>
+                                {/* <div>
                                     <label className="text-sm font-medium">IP Address</label>
                                     <input
                                         type="text"
@@ -234,7 +232,7 @@ function KalibrasiModal({ panelName, nodeID }: { panelName: string; nodeID: stri
                                         onChange={(e) => setIpAddress(e.target.value)}
                                         className="w-full border rounded p-2 text-sm mt-1"
                                     />
-                                </div>
+                                </div> */}
 
                                 {/* Pilih sensor */}
                                 <div>
@@ -260,7 +258,7 @@ function KalibrasiModal({ panelName, nodeID }: { panelName: string; nodeID: stri
                                         Batal
                                     </Button>
                                     <Button
-                                        disabled={!selected || !ipAddress}
+                                        disabled={!selected}
                                         onClick={handleKalibrasi}
                                         className="bg-blue-500 text-white hover:bg-blue-600 cursor-pointer"
                                     >
