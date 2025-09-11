@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -23,7 +23,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useGetSensor } from "@/components/parts/landing/api";
+import { useGetCommandId, useGetSensor } from "@/components/parts/landing/api";
 import Image from "next/image";
 import FilterWaktu from "@/components/parts/history/filterWaktu";
 import { useSearchParams } from "next/navigation";
@@ -164,45 +164,94 @@ function MetricCard({
 // Kalibrasi Modal
 // ==================================
 
-function KalibrasiModal({ panelName, nodeID }: { panelName: string; nodeID: string }) {
+function KalibrasiModal({
+    panelName,
+    nodeID,
+}: {
+    panelName: string;
+    nodeID: string;
+}) {
     const [selected, setSelected] = useState("");
     const [loading, setLoading] = useState(false);
-    const [done, setDone] = useState(false);
+    const [done, setDone] = useState<"success" | "failed" | null>(null);
     const [open, setOpen] = useState(false);
+    const [commandId, setCommandId] = useState<string | null>(null);
+    const [startTime, setStartTime] = useState<number | null>(null);
 
     const sensors = [
-        { label: "Sensor pH", value: "ph" },
-        { label: "Sensor Salinitas", value: "ec" },
-        { label: "Sensor Oksigen Terlarut", value: "do" },
-        { label: "Sensor Kekeruhan", value: "turb" },
+        { label: "Sensor pH", value: "kalibrasi_ph" },
+        { label: "Sensor Salinitas", value: "kalibrasi_ec" },
+        { label: "Sensor Oksigen Terlarut", value: "kalibrasi_do" },
+        { label: "Sensor Kekeruhan", value: "kalibrasi_turb" },
     ];
 
+    // Polling status command
+    const { data } = useGetCommandId(commandId ?? "", {
+        enabled: !!commandId && !done,
+        refetchInterval: !!commandId && !done ? 3000 : false,
+    });
+
+    // Cek status dari API
+    useEffect(() => {
+        if (!data?.data) return;
+
+        const status = data.data.status;
+        if (status === "done") {
+            setDone("success");
+            setLoading(false);
+        } else if (status === "failed") {
+            setDone("failed");
+            setLoading(false);
+        }
+    }, [data]);
+
+    // Timeout 30 detik
+    useEffect(() => {
+        if (!startTime || done) return;
+
+        const timer = setInterval(() => {
+            if (Date.now() - startTime > 60000 && !done) {
+                setDone("failed");
+                setLoading(false);
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [startTime, done]);
+
+    // Jalankan kalibrasi
     const handleKalibrasi = async () => {
         if (!selected) return;
 
         setLoading(true);
+        setDone(null);
+        setStartTime(Date.now());
+
         try {
-            await axios.post(`http://socket:3000/kalibrasi`, {
-                nodeID,
-                sensor: selected,
-            });
-            setDone(true);
+            const res = await axios.post(
+                `${process.env.NEXT_PUBLIC_API_URL}/commands/send-command`,
+                {
+                    nodeID,
+                    node: panelName,
+                    command: selected,
+                }
+            );
+
+            setCommandId(res.data.data.id); // simpan ID untuk polling
         } catch (err) {
             console.error("Kalibrasi gagal:", err);
-            alert("Kalibrasi gagal, cek koneksi atau IP Address.");
-        } finally {
+            setDone("failed");
             setLoading(false);
         }
     };
 
-    const reset = () => {
+    // Reset state penuh
+    const handleClose = () => {
         setSelected("");
         setLoading(false);
-        setDone(false);
-    };
-
-    const handleClose = () => {
-        reset();
+        setDone(null);
+        setCommandId(null);
+        setStartTime(null);
         setOpen(false);
     };
 
@@ -222,18 +271,6 @@ function KalibrasiModal({ panelName, nodeID }: { panelName: string; nodeID: stri
 
                         {!loading ? (
                             <div className="space-y-4">
-                                {/* Input IP Address */}
-                                {/* <div>
-                                    <label className="text-sm font-medium">IP Address</label>
-                                    <input
-                                        type="text"
-                                        placeholder="contoh: 192.168.1.10"
-                                        value={ipAddress}
-                                        onChange={(e) => setIpAddress(e.target.value)}
-                                        className="w-full border rounded p-2 text-sm mt-1"
-                                    />
-                                </div> */}
-
                                 {/* Pilih sensor */}
                                 <div>
                                     <p className="text-sm">Pilih Sensor yang ingin dikalibrasi ulang:</p>
@@ -270,7 +307,7 @@ function KalibrasiModal({ panelName, nodeID }: { panelName: string; nodeID: stri
                             <div className="flex flex-col items-center justify-center py-6 gap-3">
                                 <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
                                 <p className="text-sm">
-                                    Sedang Kalibrasi <b>{selected}</b>
+                                    Sedang Kalibrasi <b>{selected}</b>...
                                 </p>
                             </div>
                         )}
@@ -281,11 +318,37 @@ function KalibrasiModal({ panelName, nodeID }: { panelName: string; nodeID: stri
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                     >
-                        <Check className="w-10 h-10 text-green-500" />
-                        <p className="font-semibold text-sm">Kalibrasi Berhasil</p>
-                        <Button onClick={handleClose} className="bg-blue-500 text-white">
-                            Ok
-                        </Button>
+                        {done === "success" ? (
+                            <>
+                                <Check className="w-10 h-10 text-green-500" />
+                                <p className="font-semibold text-sm">Kalibrasi Berhasil</p>
+                                <Button onClick={handleClose} className="bg-blue-500 text-white">
+                                    Ok
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <p className="w-10 h-10 text-red-500 text-3xl">✕</p>
+                                <p className="font-semibold text-sm">Kalibrasi Gagal</p>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            // reset agar bisa coba lagi tanpa nutup modal
+                                            setDone(null);
+                                            setCommandId(null);
+                                            setLoading(false);
+                                            setStartTime(null);
+                                        }}
+                                    >
+                                        Coba Lagi
+                                    </Button>
+                                    <Button onClick={handleClose} className="bg-blue-500 text-white">
+                                        Tutup
+                                    </Button>
+                                </div>
+                            </>
+                        )}
                     </motion.div>
                 )}
             </DialogContent>
@@ -355,15 +418,15 @@ export default function PanelPage() {
     }
 
     return (
-        <div className="flex flex-col pt-[100px] gap-4 md:gap-6 px-5 pb-5">
+        <div className="flex flex-col pt-[120px] gap-4 md:gap-6 px-5 pb-5">
             <div className="w-full flex flex-col md:flex-row gap-3 md:justify-between">
                 <div className="flex gap-3">
                     <FilterWaktu />
                     <FilterPanel />
                 </div>
-                <div className="">
+                {/* <div className="">
                     <ButtonAddress />
-                </div>
+                </div> */}
             </div>
             {data?.data && data.data.length > 0 ? (
                 data.data.map((node) => (

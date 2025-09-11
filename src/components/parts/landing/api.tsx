@@ -2,7 +2,7 @@ import { ApiResponse, DataObject } from "@/types";
 import { SensorFormPayload } from "./validation";
 import { fetcher, sendData } from "@/services/api/fetcher";
 import { useFormMutation } from "@/hooks/useFormMutation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { LatestDataResponse, RecordDataResponse, SensorResponse } from "./interface";
 
 // LANDING
@@ -140,3 +140,24 @@ export const useSensor = (
   });
 };
 
+// hsitory by id
+// service/commandService.ts
+export const getCommandId = async (
+  id: string
+): Promise<ApiResponse<any>> => {
+  return await fetcher(`commands/get-one/${id}`);
+};
+
+// ✅ Hook bisa terima opsi supaya fleksibel (misalnya polling interval)
+
+export const useGetCommandId = (
+  id: string,
+  options?: Partial<UseQueryOptions<ApiResponse<any>, Error>>
+) => {
+  return useQuery<ApiResponse<any>, Error>({
+    queryKey: ["useGetCommandId", id],
+    queryFn: () => getCommandId(id),
+    enabled: !!id, // default hanya jalan kalau ada id
+    ...options,    // bisa override enabled, refetchInterval, dsb
+  });
+};

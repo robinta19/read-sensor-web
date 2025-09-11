@@ -90,7 +90,7 @@ export default function RecordDataPage() {
     }, [data]);
 
     return (
-        <div className="pt-[100px] px-5 pb-5">
+        <div className="pt-[120px] px-5 pb-5">
             <div className="w-full">
                 <div className="">
                     {/* Kontrol tanggal */}
