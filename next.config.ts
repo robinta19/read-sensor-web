@@ -1,11 +1,13 @@
 import type { NextConfig } from "next";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: "http://mangrove.sman10pentagon.sch.id/api/:path*",
+        destination: `${API_URL}/:path*`,
       },
     ];
   },
