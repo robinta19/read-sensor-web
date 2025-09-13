@@ -7,7 +7,7 @@ export const fetcher = async (url: string) => {
   const token = Cookies.get("accessToken");
   // Atau ambil dari state/context
   try {
-    const res = await fetch(`${BASE_URL}/${url}`, {
+    const res = await fetch(`${BASE_URL}/api/${url}`, {
       headers: {
         method: "GET",
         Authorization: `Bearer ${token}`,
@@ -25,7 +25,7 @@ export const fetcher = async (url: string) => {
 
 export const fetcherWithoutAuth = async (url: string) => {
   try {
-    const response = await fetch(`${BASE_URL}/${url}`, {
+    const response = await fetch(`${BASE_URL}/api/${url}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -77,7 +77,7 @@ export const sendData = async <T, D extends object>(
       : JSON.stringify(data);
   }
 
-  const response = await fetch(`${BASE_URL}/${url}`, options);
+  const response = await fetch(`${BASE_URL}/api/${url}`, options);
 
   if (!response.ok) {
     const error = await response.json();
