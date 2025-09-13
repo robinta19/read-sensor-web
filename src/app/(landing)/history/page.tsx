@@ -228,14 +228,11 @@ function KalibrasiModal({
         setStartTime(Date.now());
 
         try {
-            const res = await axios.post(
-                `${process.env.NEXT_PUBLIC_API_URL}/commands/send-command`,
-                {
-                    nodeID,
-                    node: panelName,
-                    command: selected,
-                }
-            );
+            const res = await axios.post("/api/commands/send-command", {
+                nodeID,
+                node: panelName,
+                command: selected,
+            });
 
             setCommandId(res.data.data.id); // simpan ID untuk polling
         } catch (err) {
@@ -244,6 +241,7 @@ function KalibrasiModal({
             setLoading(false);
         }
     };
+
 
     // Reset state penuh
     const handleClose = () => {
